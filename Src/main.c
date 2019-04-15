@@ -47,20 +47,21 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 void SystemClock_Config(void);
-extern void init_gsm(GSM_TYPE* gsm);
-extern void sendpsw(void);
-static void MX_GPIO_Init(void);
-static void MX_USART1_UART_Init(void);
+extern void init_gsm(GSM_TYPE* gsm); //初始化GSM模块
+extern void sendpsw(void);//发送密码
+static void MX_GPIO_Init(void);//配置GPIO口
+static void MX_USART1_UART_Init(void);//配置串口1   2  3
 static void MX_USART2_UART_Init(void);
 static void MX_USART3_UART_Init(void);
-static void MX_NVIC_Init(void);
+static void MX_NVIC_Init(void);//中断优先级设置
 
-GSM_TYPE gsm;
-BOX_TYPE box;
-int seted_flag = 0;
-int psw_flag = 0;
+GSM_TYPE gsm;// GSM 结构体
+BOX_TYPE box;//UI中箱子的结构体
+int seted_flag = 0; //选择好了的箱子号的flag
+int psw_flag = 0;//输入了密码的flag
 int main(void)
 {
+	//32的基本配置，如时钟，串口，等等。
   HAL_Init();
   SystemClock_Config();
   MX_GPIO_Init();
@@ -68,23 +69,27 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
   MX_NVIC_Init();
-u8 phone[]="18826107068";
-u8 psw[]="12345";
-u8 in_psw[6]={0};
-u8 status = 0;
-int box_number = -1;
-box.box_number = box_number;
-box.input_psw = in_psw;
-box.phone = phone;
-box.phone_len = 0;
-box.psw_len = 0;
-init_box(&box);
-srand(500);
-int number = rand()%100000;
-sprintf((char *)psw,"%d",number+10000);
+	u8 phone[]="18826107068";
+	u8 psw[]="12345";
+	u8 in_psw[6]={0};
+	u8 status = 0;
+	int box_number = -1;
+	box.box_number = box_number;
+	box.input_psw = in_psw;
+	box.phone = phone;
+	box.phone_len = 0;
+	box.psw_len = 0;
+	init_box(&box);//初始化箱子相关的变量 UI里面设置。
+	srand(500);//随机密码，并且转换成字母
+	int number = rand()%100000;
+	sprintf((char *)psw,"%d",number+10000);
+for(int i = 0; i != strlen((char *)psw); ++i)
+{
+	psw[i] += 0x10;
+}
 
 while(1)
-{
+{//等待UI设置好箱子号码和手机号码，设置好就GSM发短信
 	if(box.number_seted && box.phone_seted && seted_flag)
 	{
 	box_number = box.box_number;
@@ -95,14 +100,15 @@ while(1)
 	sendpsw();
   seted_flag = 0;
 	}
-	
+	//等待UI输入好了密码
 	if(box.psw_len != 0 && psw_flag)
 	{
 		in_psw[5] = '\0';
 		int num = 0;
-		  
+		  //匹配密码
 		if(0 == strcmp((const char*)psw,(const char*)in_psw))
 		{
+			//成功就解锁并且将电平输出为低电平
 			//unlcock;
 			  num = box.box_number%3;
 			  if(num == 0)
@@ -115,7 +121,7 @@ while(1)
 				{
 				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, 0);
 				}	  
-		}
+		}//密码匹配不成功就继续等待UI重新输入密码
 		else
 		{
 			psw_flag = 0;
